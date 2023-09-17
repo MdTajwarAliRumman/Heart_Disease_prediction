@@ -1,0 +1,611 @@
+#Heart Disease Prediction 
+#------------------💓-------------------
+
+Image('image-1.jpg',width=600)
+
+
+
+
+## Load Packages
+
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
+
+from google.colab import files
+from IPython.display import Image
+
+plt.style.use("fivethirtyeight")
+
+###Import Image
+
+uploaded = files.upload()
+
+#Check pandas version
+pd.__version__
+
+## Import Data
+
+heart_dft = pd.read_csv('/content/drive/MyDrive/Heart database/heart.csv')
+heart_dft.head(), heart_dft.shape
+
+# loading the csv data to a pandas dataframe
+heart_data = pd.read_csv('/content/drive/MyDrive/Heart database/HeartData.csv')
+
+
+
+
+## Get the dataset's information
+
+heart_dft.info()
+
+
+
+
+### Convert object vars and "FastingBS" var to Categorical data type
+
+
+heart_dft[
+    [
+        "ChestPainType",
+        "Sex",
+        "FastingBS",
+        "RestingECG",
+        "ExerciseAngina",
+        "ST_Slope",
+        "HeartDisease",
+    ]
+] = heart_dft[
+    [
+        "ChestPainType",
+        "Sex",
+        "FastingBS",
+        "RestingECG",
+        "ExerciseAngina",
+        "ST_Slope",
+        "HeartDisease",
+    ]
+].astype(
+    "category"
+)
+
+### Replace "M" with Male and "F" with Female and HeartDisease to Yes and No.
+
+heart_dft["Sex"] = heart_dft["Sex"].map({"M": "Male", "F": "Female"})
+heart_dft["Sex"]
+heart_dft["HeartDisease"] = heart_dft["HeartDisease"].map({0: "No", 1: "Yes"})
+heart_dft.info()
+
+ lets use describe() for summary statistics!
+
+heart_dft.describe().round()
+
+Counts of each Calegorical Vars ("ChestPainType", "Sex", "RestingECG", "ExerciseAngina", "ST_Slope")
+
+ Sex Var
+
+
+
+
+
+sex_counts = heart_dft["Sex"].value_counts(normalize=True).round(2) * 100
+sex_counts = sex_counts.reset_index().rename(columns={"Sex": "Pct", "index": "Sex"})
+sex_counts
+
+plt.figure(figsize=(7, 5))
+sns.set_context("paper")
+
+sex_color = dict({"Male": "#2986cc", "Female": "#c90076"})
+
+ax1 = sns.barplot(
+    data=sex_counts,
+    x="Sex",
+    #errorbar=None,
+    y="Pct",
+    palette=sex_color,
+    linewidth=0.5,
+    edgecolor="black",
+    alpha=0.7,
+)
+
+values1 = ax1.containers[0].datavalues
+labels = ["{:g}%".format(val) for val in values1]
+ax1.bar_label(ax1.containers[0], labels=labels)
+
+ax1.set_ylabel("Percent")
+ax1.set_xlabel("")
+ax1.set_title(
+    "Almost 80% percent of the gender category are Males, ~21% Females", fontsize=10
+)
+
+
+plt.show()
+
+Observations:
+
+* Imbalanced data in terms of the Sex variable
+
+#### ChestPainType Vs Sex
+
+
+ChestPainType_vs_Sex = (
+    heart_dft[["ChestPainType", "Sex"]]
+    .value_counts(normalize=True)
+    .reset_index(name="Pct")
+    .sort_values(by="ChestPainType")
+)
+ChestPainType_vs_Sex["Pct"] = ChestPainType_vs_Sex["Pct"].round(2) * 100
+ChestPainType_vs_Sex
+
+### RestingECG
+
+RestingECG_vs_Sex = (
+    heart_dft[["RestingECG", "Sex"]]
+    .value_counts(normalize=True)
+    .reset_index(name="Pct")
+    .sort_values(by="RestingECG")
+)
+RestingECG_vs_Sex["Pct"] = RestingECG_vs_Sex["Pct"].round(2) * 100
+RestingECG_vs_Sex.sort_values(by="Pct", ascending=False)
+
+fig, ax = plt.subplots(1, 2, figsize=(12, 5), sharey=True)
+
+palette4 = {"ASY": "#1b85b8", "ATA": "#5a5255", "NAP": "#559e83", "TA": "#ae5a41"}
+
+palette5 = {"LVH": "#2dc937", "Normal": "#e7b416", "ST": "#cc3232"}
+
+sns.barplot(
+    data=ChestPainType_vs_Sex,
+    x="Sex",
+    hue="ChestPainType",
+    #errorbar=None,
+    y="Pct",
+    palette=palette4,
+    linewidth=0.5,
+    edgecolor="black",
+    alpha=0.8,
+    ax=ax[0],
+)
+
+for ax1 in [ax[0]]:
+    for container in ax1.containers:
+        values2 = container.datavalues
+        labels = ["{:g}%".format(val) for val in values2]
+        ax1.bar_label(container, labels=labels)
+
+ax[0].set_ylabel("Percent")
+ax[0].set_xlabel("")
+ax[0].set_title(
+    "Regardless of the proportion of Males and Females,\n Men have high ASY compared with Women, and the pattern is different.",
+    fontsize=10,
+)
+
+
+sns.barplot(
+    data=RestingECG_vs_Sex,
+    x="Sex",
+    hue="RestingECG",
+    #errorbar=None,
+    y="Pct",
+    palette=palette5,
+    linewidth=0.5,
+    edgecolor="black",
+    alpha=0.8,
+    ax=ax[1],
+)
+
+for ax2 in [ax[1]]:
+    for container in ax2.containers:
+        values3 = container.datavalues
+        labels = ["{:g}%".format(val) for val in values3]
+        ax2.bar_label(container, labels=labels)
+
+ax[1].set_ylabel("")
+ax[1].set_xlabel("")
+ax[1].set_title("Men and Women have somehow same pattern of RestingECG", fontsize=10)
+
+
+plt.tight_layout()
+plt.show()
+
+
+Note: The percentage is calculated using all participants, NOT within each group of Sex
+
+### ExerciseAngina and ST_Slope
+
+ExerciseAngina_vs_Sex = (
+    heart_dft[["ExerciseAngina", "Sex"]]
+    .value_counts(normalize=True)
+    .reset_index(name="Pct")
+    .sort_values(by="ExerciseAngina")
+)
+ExerciseAngina_vs_Sex["Pct"] = ExerciseAngina_vs_Sex["Pct"].round(2) * 100
+
+
+ST_Slope_vs_Sex = (
+    heart_dft[["ST_Slope", "Sex"]]
+    .value_counts(normalize=True)
+    .reset_index(name="Pct")
+    .sort_values(by="ST_Slope")
+)
+ST_Slope_vs_Sex["Pct"] = ST_Slope_vs_Sex["Pct"].round(2) * 100
+
+fig, ax = plt.subplots(1, 2, figsize=(12, 5), sharey=True)
+
+palette6 = {
+    "Y": "#000000",
+    "N": "#009900",
+}
+
+palette7 = {"Down": "#b2d8d8", "Flat": "#66b2b2", "Up": "#004c4c"}
+
+sns.barplot(
+    data=ExerciseAngina_vs_Sex,
+    x="Sex",
+    hue="ExerciseAngina",
+    #errorbar=None,
+    y="Pct",
+    palette=palette6,
+    linewidth=0.5,
+    edgecolor="black",
+    alpha=0.8,
+    ax=ax[0],
+)
+
+for ax3 in [ax[0]]:
+    for container in ax3.containers:
+        values2 = container.datavalues
+        labels = ["{:g}%".format(val) for val in values2]
+        ax3.bar_label(container, labels=labels)
+
+ax[0].set_ylabel("Percent")
+ax[0].set_xlabel("")
+ax[0].set_title(
+    "Almost a similar pattern between Men and Women. (ExerciseAngina)", fontsize=10
+)
+
+
+sns.barplot(
+    data=ST_Slope_vs_Sex,
+    x="Sex",
+    hue="ST_Slope",
+    #errorbar=None,
+    y="Pct",
+    palette=palette7,
+    linewidth=0.5,
+    edgecolor="black",
+    alpha=0.8,
+    ax=ax[1],
+)
+
+for ax4 in [ax[1]]:
+    for container in ax4.containers:
+        values3 = container.datavalues
+        labels = ["{:g}%".format(val) for val in values3]
+        ax4.bar_label(container, labels=labels)
+
+ax[1].set_ylabel("")
+ax[1].set_xlabel("")
+ax[1].set_title(
+    "A different pattern between Men and Women (ExerciseAngina)", fontsize=10
+)
+
+
+plt.tight_layout()
+plt.show()
+
+
+
+
+### Numeric Vars ("Age", "Cholesterol", "MaxHR", "Oldpeak")
+
+filtheart_dft = heart_dft["Cholesterol"] > 0
+heart_dft_chol_n0 = heart_dft[filtheart_dft]
+
+sns.JointGrid(
+    data=heart_dft, x="Age", y="Cholesterol", hue="Sex", palette=sex_color
+).plot(sns.scatterplot, sns.histplot)
+plt.show()
+
+
+
+sns.lmplot(
+    data=heart_dft_chol_n0,
+    x="Age",
+    y="Cholesterol",
+    hue="Sex",
+    palette=sex_color,
+).set(ylabel="Cholesterol", xlabel="Age", title="")
+plt.show()
+
+
+
+### Find the mean Cholesterol by Sex
+
+Chol_mean_f = (
+    heart_dft_chol_n0[["Sex", "Cholesterol"]]
+    .groupby(["Sex"])
+    .mean("Cholesterol")
+    .loc["Female", "Cholesterol"]
+).round()
+Chol_mean_m = (
+    heart_dft_chol_n0[["Sex", "Cholesterol"]]
+    .groupby(["Sex"])
+    .mean("Cholesterol")
+    .loc["Male", "Cholesterol"]
+).round()
+
+print("for Female =", Chol_mean_f, "for Male =", Chol_mean_m)
+
+* Somehow Same mean
+
+let's try to plot the result!
+
+### Cholesterol var, density distribution, Male VS Female
+
+plt.figure(figsize=(10, 5))
+sns.set_context("paper")
+
+kdeplt = sns.kdeplot(
+    data=heart_dft_chol_n0,
+    x="Cholesterol",
+    hue="Sex",
+    palette=sex_color,
+    alpha=0.7,
+    lw=2,
+)
+kdeplt.set_title("Cholesterol values distribution\n Male VS Female", fontsize=12)
+kdeplt.set_xlabel("Cholesterol", fontsize=12)
+
+
+plt.axvline(x=Chol_mean_f, color="#c90076", ls="--", lw=1.3)
+plt.axvline(x=Chol_mean_m, color="#2986cc", ls="--", lw=1.3)
+plt.text(108, 0.00612, "Mean Cholesterol / Male", fontsize=10, color="#2986cc")
+plt.text(260, 0.006, "Mean Cholesterol / Female", fontsize=10, color="#c90076")
+
+
+plt.show()
+
+
+heart_dft.info()
+
+### Target Variable - HeartDisease
+
+Counts
+
+HeartDisease_counts = (
+    heart_dft[["HeartDisease"]]
+    .value_counts(normalize=True)
+    .reset_index(name="Pct")
+    .sort_values(by="HeartDisease")
+)
+HeartDisease_counts["Pct"] = HeartDisease_counts["Pct"].round(2) * 100
+HeartDisease_counts
+
+* Somehow balanced
+
+HeartDisease_colors = {"Yes": "#d62d20", "No": "#008744"}
+hplt = sns.barplot(
+    data=HeartDisease_counts,
+    x="Pct",
+    #errorbar=None,
+    y="HeartDisease",
+    palette=HeartDisease_colors,
+    linewidth=0.5,
+    edgecolor="black",
+    alpha=0.7,
+)
+
+hplt.set_ylabel("HeartDisease", rotation=45)
+hplt.set_xlabel("Percent")
+hplt.set_title("Acceptably balanced target variable ", fontsize=10)
+plt.show()
+
+### Pairplot
+
+#### Removing zeros from Oldpeak and Cholesterol vars
+
+filtered_for_pairplot = heart_dft.loc[
+    (heart_dft["Oldpeak"] > 0) & (heart_dft["Cholesterol"] > 0)
+]
+
+#### Create a sample of 150 to speed up the ploting process
+
+pairplot_df = (
+    filtered_for_pairplot.groupby(["Sex"])  # Stratify by "Sex"
+    .apply(lambda x: x.sample(75))  # 75 for each Sex
+    .reset_index(drop=True)  # int64 index type, back to default!
+)
+
+sns.pairplot(
+    pairplot_df,
+    hue="HeartDisease",
+    kind="scatter",
+    diag_kind="kde",
+    palette=HeartDisease_colors,
+    height=1.5,
+    aspect=1,
+    plot_kws=dict(s=5),
+)
+plt.show()
+
+
+HeartDisease_by_Sex = (
+    heart_dft.groupby(["Sex"])["HeartDisease"]
+    .value_counts(normalize=True)
+    .reset_index(name="Pct")
+).rename(columns={"level_1": "HeartDisease"})
+
+HeartDisease_by_Sex["Pct"] = HeartDisease_by_Sex["Pct"].round(2) * 100
+
+HeartDisease_by_Sex
+
+fig, ax = plt.subplots(1, 1, figsize=(12, 5))
+
+hplt = sns.barplot(
+    data=HeartDisease_by_Sex,
+    x="Sex",
+    #errorbar=None,
+    y="Pct",
+    hue="HeartDisease",
+    linewidth=0.5,
+    edgecolor="black",
+    palette=HeartDisease_colors,
+    alpha=0.6,
+    ax=ax,
+)
+
+for axhs in [ax]:
+    for container in axhs.containers:
+        values_hs = container.datavalues
+        labels = ["{:g}%".format(val) for val in values_hs]
+        axhs.bar_label(container, labels=labels)
+
+ax.set_ylabel("")
+ax.set_xlabel("")
+ax.set_title("", fontsize=10)
+
+
+plt.tight_layout()
+plt.show()
+
+plt.show()
+
+
+#### Lets check the maximum heart rate by age and Sex using FacetGrid
+
+heart_df_fg = sns.FacetGrid(
+    data=heart_dft_chol_n0,
+    col="Sex",
+    hue="Sex",
+    row="HeartDisease",
+    height=4,
+    aspect=1.3,
+    palette=sex_color,
+    col_order=["Male", "Female"],
+)
+heart_df_fg.map_dataframe(sns.regplot, "Age", "MaxHR")
+plt.show()
+
+
+#### Find the mean of Age, Cholesterol, MaxHR and RestingBP, by sex and HeartDisease vars.
+
+heart_dft_chol_n0.groupby(["Sex", "HeartDisease"]).agg(
+    Age_mean=pd.NamedAgg("Age", "mean"),
+    Cholesterol_mean=pd.NamedAgg("Cholesterol", "mean"),
+    MaxHR_mean=pd.NamedAgg("MaxHR", "mean"),
+    RestingBP_mean=pd.NamedAgg("RestingBP", "mean"),
+).reset_index().round(2)
+
+Observations:
+
+Females:
+
+* The Cholesterol_mean value in females who developed heart disease is higher (279) than in those who did not (249)
+
+* The RestingBP_mean value in females who developed heart disease is also higher (143) than in those who did not (128.7)
+
+* MaxHR_mean in females who did develop heart disease is LOWER (139) than in those who did not (149)
+
+Males:
+
+* The Cholesterol_mean value in Males who developed heart disease is higher (247) than in those who did not (232)
+
+* The RestingBP_mean value in Males who developed heart disease is slightly higher (135) than in those who did not (130.9)
+
+* MaxHR_mean in Males who did develop heart disease is LOWER (129) than in those who did not (148.9)
+
+#Data observation 
+
+# Print first 5 rows of the dataset
+heart_data.head()
+
+# Print last 5 rows of the dataset
+heart_data.tail()
+
+
+
+# Number of rows and coloumns in the dataset
+heart_data.shape
+
+# Checking for missing values
+heart_data.isnull().sum()
+
+# More information about the dataset
+heart_data.info()
+
+# Statistical measures about the dataset
+heart_data.describe()
+
+# Checking the distribution of the HeartDisease variable
+heart_data['target'].value_counts()
+
+###1---> Defective Heart
+
+###0---> Healthy Heart
+
+Splitting the Features and HeartDisease
+
+X = heart_data.drop(columns='target', axis=1)
+Y = heart_data['target']
+
+print(X)
+
+print(Y)
+
+###Splitting the Data Into Traning Data & Text Data
+
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, stratify=Y, random_state=3)
+
+print(X.shape, X_train.shape, X_test.shape)
+
+###Model training -->
+
+###Logistic Regression
+
+
+model = LogisticRegression()
+
+# training the LogisticRegression model with training data
+model.fit(X_train, Y_train)
+
+##Finding the Accuracy in both the training data and test data
+
+# accuracy on training data
+X_train_prediction = model.predict(X_train)
+training_data_accuracy = accuracy_score(X_train_prediction, Y_train)
+
+print('Accuracy on Taining data : ', training_data_accuracy)
+
+# accuracy on test data
+X_test_prediction = model.predict(X_test)
+test_data_accuracy = accuracy_score(X_test_prediction, Y_test)
+
+print('Accuracy on Test data : ', test_data_accuracy)
+
+###Building a Predictive System 
+(Predict if the person has heart disease or not)
+
+
+input_data = (58,0,0,100,248,0,0,122,0,1,1,0,2)
+
+# change the input data to a numpy array
+input_data_as_numpy_array = np.asarray(input_data)
+
+# reshape the numpy array as we are predicting for only one instance
+input_data_reshaped = input_data_as_numpy_array.reshape(1, -1)
+
+prediction = model.predict(input_data_reshaped)
+print(prediction)
+
+if(prediction[0]==0):
+  print('The person does not have Heart disease.')
+else:
+  print('The person has heart disease.\n\n\n')  
